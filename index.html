@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GeoSense survey console</title>
+<style>
+:root{color-scheme:light;--bg:#eef1f4;--panel:#fff;--ink:#18212b;--mut:#5a6978;--line:#d3dae1;--acc:#b8780f;--accbg:#fff3dc;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#141a22;--panel:#1c2530;--ink:#e7ebf0;--mut:#93a1b1;--line:#2c3846;--acc:#e0a33a;--accbg:#3a2e17}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#141a22;--panel:#1c2530;--ink:#e7ebf0;--mut:#93a1b1;--line:#2c3846;--acc:#e0a33a;--accbg:#3a2e17}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:14px 16px 8px;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:end;justify-content:space-between}
+h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--mut);font-size:12.5px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+button,select{font:inherit;color:var(--ink);background:var(--panel);border:0;padding:6px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+button[aria-pressed="true"]{background:var(--accbg);color:var(--acc);font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.solo{border:1px solid var(--line);border-radius:6px}
+#stage{padding:8px 16px 24px;display:grid;gap:14px}
+@media (min-width:1050px){#stage[data-view="dual"]{grid-template-columns:1fr 1fr}}
+#stage[data-view="s1"] .s2,#stage[data-view="s2"] .s1{display:none}
+.screen{display:grid;gap:10px;align-content:start;min-width:0}
+.screen>h2{margin:0;font-size:15px;font-weight:600}
+.screen>h2 span{color:var(--mut);font-weight:400}
+.g{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.p{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;min-width:0}
+.p h3{margin:0 0 6px;font-size:13px;font-weight:600}
+canvas{display:block;width:100%;background:#0f151c;border-radius:4px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}.row b{font-variant-numeric:tabular-nums}
+.mut{color:var(--mut);font-size:12px}
+.leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--mut)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.big{font-size:18px;font-weight:600;margin:0 0 4px}
+.conf{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0}
+.conf i{display:block;height:100%;background:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+td,th{padding:3px 4px;text-align:right;border-bottom:1px solid var(--line)}td:first-child,th:first-child{text-align:left}
+input[type=range]{width:100%;accent-color:var(--acc)}
+#out{display:none;white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px;margin-top:8px}
+.vx{display:flex;gap:8px}
+@media (max-width:1049px){#views button[data-v="dual"]{display:none}}
+#tw{height:340px;position:relative;background:#0f151c;border-radius:4px;overflow:hidden;color:#93a1b1;padding:0}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style></head><body>
+<header>
+ <div><h1>GeoSense survey console</h1>
+ <div role="note" style="display:inline-block;margin:4px 0 2px;padding:3px 9px;border:1px solid var(--acc);border-radius:999px;background:var(--accbg);color:var(--acc);font-size:12px;font-weight:600">Mode: Synthetic Simulation &amp; Data-Fusion Testbench</div>
+ <p>Simulated Airborne Magnetometry &amp; Multi-Sensor Exploration Testbench over a synthetic 450 × 450 m block. All values are demo data.</p></div>
+ <div class="bar">
+  <div class="seg" id="views"><button data-v="s1" aria-pressed="false">Mission Ops</button><button data-v="s2" aria-pressed="false">GeoSense 3D</button><button data-v="dual" aria-pressed="true">Dual view</button></div>
+  <div class="seg" id="modes"><button data-m="live" aria-pressed="true">Live simulation</button><button data-m="play" aria-pressed="false">Recorded playback</button></div>
+  <div class="seg" id="src" role="group" aria-label="Data source"><button data-s="sa" aria-pressed="true">Standalone engine</button><button data-s="ws" aria-pressed="false">Live WebSocket</button></div><span class="mut" id="srcst" aria-live="polite">Standalone: in-browser simulation</span>
+  <button class="solo" id="pp">Pause</button><button class="solo" id="rs">Restart survey</button>
+  <select class="solo" id="sp" aria-label="Simulation speed"><option value="10">10× time</option><option value="30" selected>30× time</option><option value="80">80× time</option></select>
+ </div>
+</header>
+<main id="stage" data-view="dual">
+<section class="screen s1">
+ <h2>Screen 1 <span>Mission operations and sensor telemetry</span></h2>
+ <div class="g">
+  <div class="p"><h3>3D digital twin: flight corridor</h3><div class="seg" id="cams" style="margin-bottom:8px"><button data-c="chase" aria-pressed="true">Chase cam</button><button data-c="iso" aria-pressed="false">Isometric survey cam</button></div><div id="tw"></div>
+   <div class="leg"><span>Green cone and ring: multi-sensor scanning footprint. Amber line: planned lawnmower route. Green line: flown so far. Ground colours show the mineral found under each scanned cell, the same cells that fill in on Screen 2.</span></div></div>
+  <div class="p"><h3>Flight HUD</h3><div id="hud"></div></div>
+ </div>
+ <div class="g">
+  <div class="p"><h3>Ground-Coupled Node Channel (1–200 Hz PZT)</h3><canvas id="scope" style="height:230px"></canvas><canvas id="psd" style="height:140px;margin-top:6px"></canvas>
+   <div class="leg"><span><i class="sw" style="background:#e8743b"></i>Raw piezo, ambient &amp; cultural noise <b id="snr1"></b></span><span><i class="sw" style="background:#5fd38d"></i>Filtered backscatter (QAWS algorithm) <b id="snr2"></b></span></div></div>
+  <div class="p"><h3>Magnetometer</h3><canvas id="mag" style="height:150px"></canvas><div id="magv" style="margin-top:6px"></div></div>
+ </div>
+</section>
+<section class="screen s2">
+ <h2>Screen 2 <span>GeoSense subsurface and mineral intelligence</span></h2>
+ <div class="g">
+  <div class="p"><h3>3D voxel volume (0–100 m, vertical ×2)</h3><div class="seg" id="vmode" style="margin-bottom:8px"><button data-vm="vox" aria-pressed="true">Volumetric voxel</button><button data-vm="sec" aria-pressed="false">Lithology cross-section</button></div><div class="mut" style="margin-bottom:6px">Drag to orbit, scroll or pinch to zoom.</div>
+   <div class="vx"><div id="vx3" style="height:400px;flex:1;min-width:0;position:relative;background:#0f151c;border-radius:4px;overflow:hidden;touch-action:none"><canvas id="cmp" width="64" height="64" aria-label="Compass, north indicator" style="position:absolute;right:8px;top:8px;width:64px;height:64px;background:transparent;z-index:2;pointer-events:none"></canvas><button class="solo" id="ar" aria-pressed="false" style="position:absolute;right:8px;bottom:8px;z-index:2;font-size:12px;padding:4px 9px">Auto-rotate: off</button></div><canvas id="wl" style="height:400px;width:64px;flex:none"></canvas></div>
+   <label class="mut" for="cut" style="display:block;margin-top:8px">Depth slicer: cut plane at <b id="cutv">0 m</b> (voxel mode shows strata below it; cross-section mode shows only that horizontal slice)</label>
+   <input type="range" id="cut" min="0" max="95" step="5" value="0">
+   <div class="leg" id="leg"></div></div>
+  <div style="display:grid;gap:10px;align-content:start;min-width:0">
+   <div class="p"><h3>Identified mineral (scan cell <span id="cellid"></span>)</h3><p class="big" id="mname"></p>
+    <div class="conf"><i id="mconf"></i></div><div class="mut" id="mconft"></div></div>
+   <div class="p"><h3>Strata at current cell</h3><div id="strata"></div></div>
+   <div class="p"><h3>Scanned reserves (volumetric estimate)</h3><div id="res"></div></div>
+   <div class="p"><h3>Export</h3><div class="bar"><button class="solo" id="brep">Generate survey report</button><button class="solo" id="bdxf">Build DXF points</button><button class="solo" id="bcp">Copy output</button></div>
+    <p class="mut" style="margin:6px 0 0">GeoTIFF and BIM export need the backend service; this demo builds the report and a CAD point file as text.</p><div id="out" aria-live="polite"></div></div>
+  </div>
+ </div>
+</section>
+</main>
+<div id="rmod" role="dialog" aria-modal="true" aria-labelledby="rt" style="display:none;position:fixed;inset:0;background:rgba(10,14,20,.6);z-index:50;align-items:center;justify-content:center;padding:16px"><div class="p" style="max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:18px">
+<div class="mut" style="text-transform:uppercase;letter-spacing:.06em">Wartosh GeoSense · simulated demo data</div>
+<h2 id="rt" style="margin:2px 0 12px;font-size:18px">Geotechnical Flight Log &amp; Reserve Summary</h2>
+<h3>Survey metadata</h3><div id="rmeta"></div>
+<h3 style="margin-top:14px">Ore reserve estimation (0–100 m)</h3><div style="overflow-x:auto"><table id="rtab"></table></div><div id="rstrip" style="margin-top:8px"></div>
+<p class="mut" style="margin:10px 0 0">All figures come from the synthetic block model. Densities are model assumptions, not assays. Tonnage = volume × density.</p>
+<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="solo" id="rclose">Close</button><button class="solo" id="rcsv">Download CSV</button><button class="solo" id="rdxf" style="background:var(--accbg);color:var(--acc);font-weight:600">Download DXF</button></div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const N=18,K=20,CELL=25,VH=5,$=id=>document.getElementById(id);
+const CL=[{n:'Sedimentary overburden',c:'#d9c27a',rho:2.1,v:1800,d:'OVERBURDEN'},
+{n:'Iron ore (hematite/magnetite)',c:'#b4432c',rho:4.2,v:5200,d:'IRON'},
+{n:'Lithium / pegmatite host',c:'#9a63e0',rho:2.7,v:5600,d:'LITHIUM'},
+{n:'Coal seam',c:'#4a4a55',rho:1.4,v:2000,d:'COAL'},
+{n:'Limestone / bedrock',c:'#8c9aa3',rho:2.7,v:5000,d:'LIMESTONE'},
+{n:'Fault / void plane',c:'#4cc3ff',rho:1.0,v:900,d:'FAULT'}];
+function layer(x,y,z){
+ if(Math.abs(x-.45-.1*(y-.5))<.035&&z>6)return 5;
+ if(z<12+4*Math.sin(x*6))return 0;
+ const m=8*Math.exp(-((x-.22)**2+(y-.5)**2)/.03);
+ if(x<.45&&z<30+m)return 1;
+ if(y>.4&&z>35&&z<45)return 3;
+ if(x>.65&&z>45+10*y&&z<70+10*y)return 2;
+ return 4}
+const G=[],T=[],P=[],IT=[];
+for(let i=0;i<N;i++){G[i]=[];T[i]=[];P[i]=[];IT[i]=[];for(let j=0;j<N;j++){
+ const col=[];for(let k=0;k<K;k++)col.push(layer((i+.5)/N,(j+.5)/N,(k+.5)*VH));G[i][j]=col;
+ const cls=[2,1,3,5,4].find(c=>col.includes(c)),hh=(i*12.9898+j*78.233);
+ T[i][j]={cls,top:col.indexOf(cls)*VH,th:col.filter(c=>c==cls).length*VH,cf:.88+.11*(Math.sin(hh)*43758.5453%1+1)%1};
+ IT[i][j]=col.filter(c=>c==1).length*VH;
+ const p=[];for(let k=1;k<K;k++)if(col[k]!=col[k-1]){const a=CL[col[k-1]],b=CL[col[k]],za=a.rho*a.v,zb=b.rho*b.v;p.push({d:k*VH,a:Math.min(1,Math.abs(zb-za)/(za+zb)*2.4),s:zb>za?1:-1,k:col[k]})}
+ P[i][j]=p}}
+const S={u:0,run:true,sp:30,mode:'live',cut:0,view:'dual',t:0,hist:[],key:'',src:'sa',tele:null,lastMsg:0};
+let rs=Math.random;function seeded(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=()=>rs();
+const cellIdx=(i,j)=>j*N+(j%2?N-1-i:i);
+const shade=(h,f)=>{const n=parseInt(h.slice(1),16);return`rgb(${Math.min(255,(n>>16)*f)|0},${Math.min(255,(n>>8&255)*f)|0},${Math.min(255,(n&255)*f)|0})`};
+function fit(c){const w=c.clientWidth,h=c.clientHeight;if(!w)return null;const d=devicePixelRatio||1;
+ if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}
+ const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.fillStyle='#0f151c';x.fillRect(0,0,w,h);return[w,h,x]}
+const row=(a,b)=>`<div class="row"><span>${a}</span><b>${b}</b></div>`;
+$('hud').innerHTML=[['Altitude AGL','h_alt'],['Survey speed','h_spd'],['Battery','h_bat'],['Line-km covered','h_km'],['Position (RTK)','h_pos'],['Fix','h_fix'],['Motor RPM (4 rotors)','h_rpm'],['Telemetry link','h_lnk']].map(([a,b])=>row(a,`<span id="${b}"></span>`)).join('');
+$('leg').innerHTML=CL.map(c=>`<span><i class="sw" style="background:${c.c}"></i>${c.n}</span>`).join('');
+const setT=(id,t)=>$(id).textContent=t;
+let counts=new Array(6).fill(0),lastCount=-1;
+
+function pos(){const cf=S.u*N*N,j=Math.min(N-1,Math.floor(cf/N)),f=(cf%N)/N;
+ return{x:S.u>=1?(j%2?0:1):(j%2?1-f:f),y:(j+.5)/N,c:Math.min(N*N-1,Math.floor(cf)),j}}
+function cellOf(c){const j=Math.floor(c/N),t=c%N;return[j%2?N-1-t:t,j]}
+
+/* ---- Three.js digital twin ---- */
+let TW=null,TWcam='chase';
+const terr=(x,z)=>7*Math.sin(x*.018+1)*Math.cos(z*.014)+3.5*Math.sin(x*.045+z*.03),AGL=40,R0=20,angd=d=>Math.atan2(Math.sin(d),Math.cos(d));
+function twInit(){const el=$('tw');if(!el.clientWidth)return null;
+ try{const T=THREE,r=new T.WebGLRenderer({antialias:true});r.setPixelRatio(Math.min(2,devicePixelRatio||1));el.appendChild(r.domElement);r.domElement.style.cssText='width:100%;height:100%;display:block';
+  const sc=new T.Scene();sc.background=new T.Color(0x0f151c);sc.fog=new T.Fog(0x0f151c,450,1200);const cam=new T.PerspectiveCamera(50,1,1,3000);
+  sc.add(new T.HemisphereLight(0xcfe6ff,0x304050,1));const dl=new T.DirectionalLight(0xffffff,.7);dl.position.set(200,400,100);sc.add(dl);
+  const g=new T.PlaneGeometry(450,450,45,45);g.rotateX(-Math.PI/2);g.translate(225,0,225);const ps=g.attributes.position;
+  for(let n=0;n<ps.count;n++)ps.setY(n,terr(ps.getX(n),ps.getZ(n)));g.computeVertexNormals();
+  const cv=document.createElement('canvas');cv.width=cv.height=N*10;const tex=new T.CanvasTexture(cv);tex.magFilter=T.NearestFilter;
+  sc.add(new T.Mesh(g,new T.MeshStandardMaterial({map:tex,roughness:1})));
+  const wm=new T.Mesh(g,new T.MeshBasicMaterial({color:0x7fb59b,wireframe:true,transparent:true,opacity:.12}));wm.position.y=.25;sc.add(wm);
+  const pts=[];for(let c=0;c<N*N;c++){const[i,j]=cellOf(c),x=(i+.5)*CELL,z=(j+.5)*CELL;pts.push(new T.Vector3(x,terr(x,z)+1.6,z))}
+  const pg=new T.BufferGeometry().setFromPoints(pts),fl=new T.Line(pg.clone(),new T.LineBasicMaterial({color:0x5fd38d}));
+  sc.add(new T.Line(pg,new T.LineBasicMaterial({color:0xe0a33a,transparent:true,opacity:.4})),fl);
+  const dr=new T.Group(),body=new T.Group(),mw=new T.MeshStandardMaterial({color:0xe6ebf0,roughness:.5}),mk=new T.MeshStandardMaterial({color:0x2b3440});dr.add(body);
+  body.add(new T.Mesh(new T.BoxGeometry(4,1.6,5),mw));
+  [1,-1].forEach(s=>{const a=new T.Mesh(new T.BoxGeometry(16,.5,.9),mk);a.rotation.y=s*Math.PI/4;body.add(a)});
+  const rot=[];[[5.6,5.6],[-5.6,5.6],[5.6,-5.6],[-5.6,-5.6]].forEach(([x,z])=>{const d=new T.Group();d.position.set(x,.9,z);
+   const bl=new T.Mesh(new T.BoxGeometry(7,.1,.6),new T.MeshBasicMaterial({color:0xcfd8e0})),b2=bl.clone();b2.rotation.y=Math.PI/2;d.add(bl,b2);
+   d.add(new T.Mesh(new T.CylinderGeometry(3.6,3.6,.05,20),new T.MeshBasicMaterial({color:0x5fd38d,transparent:true,opacity:.2})));body.add(d);rot.push(d)});
+  const nose=new T.Mesh(new T.BoxGeometry(1.2,.8,1.2),new T.MeshBasicMaterial({color:0xe8743b}));nose.position.set(0,0,3);body.add(nose);
+  dr.scale.setScalar(2.2);dr.rotation.order='YXZ';sc.add(dr);
+  const cg=new T.ConeGeometry(R0,AGL,32,1,true),cone=new T.Mesh(cg,new T.MeshBasicMaterial({color:0x5fd38d,transparent:true,opacity:.16,side:T.DoubleSide,depthWrite:false})),
+   edges=new T.LineSegments(new T.EdgesGeometry(cg),new T.LineBasicMaterial({color:0x7ff0b0,transparent:true,opacity:.5})),
+   ring=new T.Mesh(new T.RingGeometry(R0-.8,R0,48).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0x7ff0b0,side:T.DoubleSide})),
+   wv=[0,1,2].map(()=>new T.Mesh(new T.RingGeometry(.92,1,40).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffffff,transparent:true,side:T.DoubleSide,depthWrite:false})));
+  sc.add(cone,edges,ring,...wv);
+  return{r,sc,cam,cv,tex,fl,dr,rot,cone,edges,ring,wv,c:-1,w:0,h:0,x:0,z:12.5,hd:Math.PI/2,ch:Math.PI/2,roll:0,cp:new T.Vector3(585,290,585),lp:new T.Vector3(225,0,225)}
+ }catch(e){el.textContent='WebGL is not available in this browser, so the 3D twin cannot start.';el.style.padding='12px';return false}}
+function drawTwin(p,dt){if(TW===false)return;if(!TW){TW=twInit();if(!TW)return}
+ const el=$('tw'),w=el.clientWidth,h=el.clientHeight;if(!w)return;const q=TW,V=THREE.Vector3;
+ if(q.w!==w||q.h!==h){q.r.setSize(w,h,false);q.cam.aspect=w/h;q.cam.updateProjectionMatrix();q.w=w;q.h=h}
+ const tx=p.x*450,tz=p.y*450,k=1-Math.exp(-dt*8),ox=q.x,oz=q.z;q.x+=(tx-q.x)*k;q.z+=(tz-q.z)*k;
+ const vx=q.x-ox,vz=q.z-oz,mv=Math.hypot(vx,vz)>.01;
+ if(mv){const d=angd(Math.atan2(vx,vz)-q.hd);q.hd+=d*Math.min(1,dt*6);q.roll+=(-d*1.2-q.roll)*Math.min(1,dt*6)}else q.roll*=.95;
+ q.ch+=angd(q.hd-q.ch)*Math.min(1,dt*1.5);
+ const gy=terr(q.x,q.z),dy=gy+AGL;q.dr.position.set(q.x,dy,q.z);q.dr.rotation.set(mv?.2:.05,q.hd,Math.max(-.5,Math.min(.5,q.roll)));
+ q.rot.forEach((d,n)=>d.rotation.y+=dt*(S.run&&S.u<1?55:6)*(n%2?-1:1));
+ q.cone.position.set(q.x,gy+AGL/2,q.z);q.edges.position.copy(q.cone.position);q.ring.position.set(q.x,gy+.7,q.z);
+ q.wv.forEach((m,n)=>{const s=(S.t*.9+n/3)%1,rr=Math.max(.01,R0*s);m.position.set(q.x,gy+AGL*(1-s),q.z);m.scale.set(rr,1,rr);m.material.opacity=.7*(1-s)});
+ if(q.c!==p.c){q.c=p.c;const x=q.cv.getContext('2d');x.fillStyle='#223028';x.fillRect(0,0,N*10,N*10);
+  for(let n=0;n<=p.c;n++){const[i,j]=cellOf(n);x.fillStyle=CL[T[i][j].cls].c;x.fillRect(i*10,j*10,10,10)}
+  q.tex.needsUpdate=true;q.fl.geometry.setDrawRange(0,p.c+1)}
+ const fx=Math.sin(q.ch),fz=Math.cos(q.ch),kc=1-Math.exp(-dt*3.5);let c,l;
+ if(TWcam==='chase'){c=new V(q.x-fx*70,dy+32,q.z-fz*70);l=new V(q.x+fx*40,gy+5,q.z+fz*40)}else{c=new V(585,290,585);l=new V(225,0,225)}
+ q.cp.lerp(c,kc);q.lp.lerp(l,kc);q.cam.position.copy(q.cp);q.cam.lookAt(q.lp);q.r.render(q.sc,q.cam)}
+seg('cams','c',c=>TWcam=c);
+/* ---- PSD (DFT of synthesized time series, 1–200 Hz) ---- */
+const FN=512,FB=200,FC=new Float32Array(FB*FN),FS=new Float32Array(FB*FN);
+for(let b=0;b<FB;b++)for(let n=0;n<FN;n++){const a=6.2832*(b+1)*n/FN;FC[b*FN+n]=Math.cos(a);FS[b*FN+n]=Math.sin(a)}
+let psdR=new Float32Array(FB).fill(-70),psdF=new Float32Array(FB).fill(-70),psdN=0;
+function dft(sig,out){for(let b=0;b<FB;b++){let re=0,im=0;const o=b*FN;for(let n=0;n<FN;n++){re+=sig[n]*FC[o+n];im+=sig[n]*FS[o+n]}out[b]=Math.max(-70,20*Math.log10(2*Math.hypot(re,im)/FN+1e-9))}}
+function psdCalc(p){const[i,j]=cellOf(p.c),pl=P[i][j],fr=80+2*Math.sin(S.t*2),a=new Float32Array(FN),r=new Float32Array(FN);let lp=0;
+ for(let n=0;n<FN;n++){const t=n/FN;let e=0;
+  for(const q of pl){const tau=t-.05-q.d/100*.4,u=(Math.PI*35*tau)**2;e+=q.s*q.a*(1-2*u)*Math.exp(-u);if((q.d>=35||q.k===5)&&tau>0)e+=.4*q.a*Math.exp(-tau*12)*Math.sin(6.2832*18*tau)}
+  e*=.8;lp=lp*.9+(R()-.5)*.4;
+  a[n]=e+(R()-.5)*.03;
+  r[n]=e*.3+lp+1.2*Math.sin(6.2832*fr*t)+.6*Math.sin(6.2832*2*fr*t+1)+(R()-.5)*.6}
+ dft(r,psdR);dft(a,psdF)}
+function psdDraw(p){if(psdN++%4===0)psdCalc(p);const f=fit($('psd'));if(!f)return;const[W,H,x]=f,l=34,b=16,X=n=>l+n/199*(W-l-6),Y=d=>6+(-d/70)*(H-6-b);
+ x.fillStyle='rgba(232,116,59,.14)';x.fillRect(X(77),6,X(83)-X(77),H-6-b);
+ x.font='10px sans-serif';x.fillStyle='#93a1b1';x.strokeStyle='#26323f';x.lineWidth=1;
+ [0,-20,-40,-60].forEach(d=>{x.beginPath();x.moveTo(l,Y(d));x.lineTo(W-6,Y(d));x.stroke();x.fillText(d+' dB',0,Y(d)+3)});
+ [1,50,100,150,200].forEach(h=>x.fillText(h==200?'200 Hz':h,Math.min(W-34,X(h-1)-4),H-3));
+ x.fillText('industrial 50/60 Hz hum',X(84),16);
+ [[psdR,'#e8743b'],[psdF,'#5fd38d']].forEach(([a,c])=>{x.strokeStyle=c;x.lineWidth=1.4;x.beginPath();for(let n=0;n<FB;n++){const px=X(n),py=Y(a[n]);n?x.lineTo(px,py):x.moveTo(px,py)}x.stroke()})}
+function drawMapOld(p){const f=fit($('map'));if(!f)return;const[W,H,x]=f,m=12,sw=W-2*m,sh=H-2*m,X=u=>m+u*sw,Y=v=>m+v*sh;
+ for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(cellIdx(i,j)<=p.c){x.globalAlpha=.6;x.fillStyle=CL[T[i][j].cls].c;x.fillRect(X(i/N),Y(j/N),sw/N+1,sh/N+1)}
+ x.globalAlpha=1;x.strokeStyle='#33414f';x.lineWidth=1;x.beginPath();
+ for(let j=0;j<N;j++){x.moveTo(X(0),Y((j+.5)/N));x.lineTo(X(1),Y((j+.5)/N))}x.stroke();
+ const px=X(p.x),py=Y(p.y);x.strokeStyle='#5fd38d';x.setLineDash([4,3]);x.beginPath();x.arc(px,py,sw/N*.8,0,7);x.stroke();x.setLineDash([]);
+ x.fillStyle='#fff';x.beginPath();x.moveTo(px,py-7);x.lineTo(px+6,py+6);x.lineTo(px-6,py+6);x.closePath();x.fill();
+ x.fillStyle='#93a1b1';x.font='11px sans-serif';x.fillText('N ↑',W-30,H-6)}
+
+function scopeDraw(p){const f=fit($('scope'));if(!f)return;const[W,H,x]=f,[i,j]=cellOf(p.c),pl=P[i][j],rpm=4800+120*Math.sin(S.t*2),fr=rpm/60,L=H/2;
+ const wav=px=>{let s=0;const u=px/W;
+  if(u<.15)s+=.3*Math.exp(-u*8)*Math.sin(px*1.9+Math.sin(px*.37)*3)*Math.sin(px*.53);
+  for(const q of pl){const dx=px-q.d/100*W,sh=q.d>=15&&q.d<35;
+   s+=q.a*Math.exp(-((dx/(sh?4:8))**2))*Math.cos(dx/(sh?1.6:2.4)+(q.s<0?Math.PI:0));
+   if((q.d>=35||q.k===5)&&dx>0)s+=(q.k===5?.8:.45)*q.a*Math.exp(-dx/50)*Math.sin(dx/10)}
+  return s};
+ x.fillStyle='rgba(217,194,122,.08)';x.fillRect(0,0,.15*W,H);x.fillStyle='rgba(180,67,44,.1)';x.fillRect(.15*W,0,.2*W,H);x.fillStyle='rgba(76,195,255,.07)';x.fillRect(.35*W,0,.65*W,H);
+ x.fillStyle='#93a1b1';x.font='10px sans-serif';x.fillText('diffuse',3,11);x.fillText('ore contact',.15*W+3,11);x.fillText('bedrock ringing',.35*W+3,11);
+ [0,1].forEach(l=>{x.strokeStyle='#26323f';x.beginPath();x.moveTo(0,L*l+L/2);x.lineTo(W,L*l+L/2);x.stroke()});
+ x.fillStyle='#93a1b1';x.font='11px sans-serif';[0,25,50,75,100].forEach(d=>x.fillText(d+' m',Math.min(W-34,d/100*W+3),H-4));
+ const tr=(l,col,fn)=>{x.strokeStyle=col;x.lineWidth=1.3;x.beginPath();for(let px=0;px<=W;px+=2){const y=L*l+L/2-fn(px)*L*.4;px?x.lineTo(px,y):x.moveTo(px,y)}x.stroke()};
+ tr(0,'#e8743b',px=>{const ph=6.283*fr*(px/W*.25+S.t);return Math.max(-1.2,Math.min(1.2,.7*Math.sin(ph)+.35*Math.sin(2*ph+1)+.2*Math.sin(3*ph+2)+(R()-.5)*.5+wav(px)*.3))});
+ tr(1,'#5fd38d',px=>Math.max(-1.2,Math.min(1.2,wav(px)*1.5+(R()-.5)*.06)));
+ setT('snr1',(-14.2+.8*Math.sin(S.t*3)).toFixed(1)+' dB');setT('snr2','+'+(18.1+.5*Math.sin(S.t*2.3)).toFixed(1)+' dB')}
+
+function magDraw(p){const[i,j]=cellOf(p.c),prev=p.c?cellOf(p.c-1):[i,j],fl=T[i][j].cls==5?-40:0;
+ const A=(S.src==='ws'&&S.tele&&S.tele.mag!=null)?+S.tele.mag:IT[i][j]*14+fl+(R()-.5)*25,g=((IT[i][j]-IT[prev[0]][prev[1]])*14)/CELL;
+ S.hist.push(A);if(S.hist.length>320)S.hist.shift();
+ const bx=19.4+A/3e3,by=2.1+A/9e3,bz=43+A/2e3;
+ $('magv').innerHTML=row('Bx / By / Bz',`${bx.toFixed(3)} / ${by.toFixed(3)} / ${bz.toFixed(3)} µT`)+row('Anomaly ΔB',`${A.toFixed(0)} nT`)+row('Gradient',`${g.toFixed(2)} nT/m`);
+ const f=fit($('mag'));if(!f)return;const[W,H,x]=f,mx=Math.max(200,...S.hist);
+ x.strokeStyle='#26323f';x.beginPath();x.moveTo(0,H-18);x.lineTo(W,H-18);x.stroke();
+ x.strokeStyle='#e0a33a';x.lineWidth=1.4;x.beginPath();S.hist.forEach((v,n)=>{const X=n/320*W,Y=H-18-Math.max(0,v)/mx*(H-30);n?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke();
+ x.fillStyle='#93a1b1';x.font='11px sans-serif';x.fillText('ΔB history (nT), peaks sit over iron-bearing cells',6,12)}
+
+function hud(p){const v=8+Math.sin(S.t*.7)*.8;
+ setT('h_alt',(40+1.5*Math.sin(S.t*1.3)).toFixed(1)+' m');setT('h_spd',v.toFixed(1)+' m/s');setT('h_bat',(100-S.u*62).toFixed(0)+' %');
+ setT('h_km',(S.u*8.1).toFixed(2)+' / 8.10 km');setT('h_pos',`${(21.25+p.y*.004).toFixed(6)}°N ${(85.1+p.x*.004).toFixed(6)}°E`);
+ setT('h_fix','RTK fixed, ±2 cm');setT('h_rpm',[0,1,2,3].map(k=>(4800+120*Math.sin(S.t*2+k)).toFixed(0)).join(' · '));
+ setT('h_lnk',S.src==='ws'?'Live WebSocket, 50 Hz (seq '+S.tele.seq+')':S.mode==='live'?'Live stream, 60 Hz in-browser':'Recorded replay (offline-safe)');
+ if(S.src==='ws'&&S.tele){const d=S.tele;setT('h_alt',(+d.alt).toFixed(1)+' m');setT('h_spd',(+d.spd).toFixed(1)+' m/s');setT('h_bat',(+d.bat).toFixed(0)+' %')}}
+
+/* ---- Screen 2: Three.js InstancedMesh voxel volume with Z clipping plane ---- */
+const EY=2,VD=VH*K*EY,cl=(v,a,b)=>Math.max(a,Math.min(b,v));let VX=null;const P2=new Map();S.vm='vox';S.ar=false;
+function voxInit(){const el=$('vx3');
+ try{const T=THREE,r=new T.WebGLRenderer({antialias:true});r.localClippingEnabled=true;r.setPixelRatio(Math.min(2,devicePixelRatio||1));el.appendChild(r.domElement);
+  const cv=r.domElement;cv.style.cssText='width:100%;height:100%;display:block;touch-action:none';
+  const sc=new T.Scene();sc.background=new T.Color(0x0f151c);sc.add(new T.HemisphereLight(0xffffff,0x40505f,.95));const dl=new T.DirectionalLight(0xffffff,.8);dl.position.set(300,600,200);sc.add(dl);
+  const plane=new T.Plane(new T.Vector3(0,-1,0),0),mat=new T.MeshStandardMaterial({roughness:.85,clippingPlanes:[plane]});
+  const im=new T.InstancedMesh(new T.BoxGeometry(CELL*.96,VH*EY*.96,CELL*.96),mat,N*N*K);im.frustumCulled=false;im.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  const c=new T.Color();for(let i=0;i<N;i++)for(let j=0;j<N;j++)for(let k=0;k<K;k++){c.set(CL[G[i][j][k]].c);im.setColorAt((i*N+j)*K+k,c)}im.instanceColor.needsUpdate=true;sc.add(im);
+  const fr=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(450,VD,450)),new T.LineBasicMaterial({color:0x4a5a6a}));fr.position.set(225,-VD/2,225);sc.add(fr);
+  const cap=new T.Mesh(new T.PlaneGeometry(450,450).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.1,side:T.DoubleSide,depthWrite:false}));cap.position.set(225,0,225);sc.add(cap);
+  const mk=new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(CELL,VD,CELL)),new T.LineBasicMaterial({color:0xffffff}));sc.add(mk);
+  const tk=[];[[0,'0 m surface'],[25,'−25 m'],[50,'−50 m'],[75,'−75 m'],[100,'−100 m bedrock']].forEach(([d,t])=>{const y=-d*EY;tk.push(0,y,450,-14,y,450);
+   const c2=document.createElement('canvas');c2.width=256;c2.height=48;const x=c2.getContext('2d');x.font='bold 26px sans-serif';x.fillStyle='#cfd8e0';x.textAlign='right';x.textBaseline='middle';x.fillText(t,250,24);
+   const s=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c2),depthTest:false,transparent:true}));s.scale.set(128,24,1);s.position.set(-84,y,450);sc.add(s)});
+  sc.add(new T.LineSegments(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(tk,3)),new T.LineBasicMaterial({color:0xcfd8e0})));
+  const q={r,sc,cam:new T.PerspectiveCamera(45,1,1,4000),im,mat,plane,cap,mk,sec:false,th:.8,ph:1,rad:900,tgt:new T.Vector3(225,-VD/2,225),w:0,h:0};
+  const dist=()=>{const[a,b]=[...P2.values()];return Math.hypot(a[0]-b[0],a[1]-b[1])};let pd=0;
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);P2.set(e.pointerId,[e.clientX,e.clientY]);pd=P2.size===2?dist():0});
+  cv.addEventListener('pointermove',e=>{const o=P2.get(e.pointerId);if(!o)return;P2.set(e.pointerId,[e.clientX,e.clientY]);
+   if(P2.size===1){q.th-=(e.clientX-o[0])*.008;q.ph=cl(q.ph-(e.clientY-o[1])*.008,.15,1.5)}else if(P2.size===2){const d=dist();if(pd)q.rad=cl(q.rad*pd/d,250,2000);pd=d}});
+  const up=e=>{P2.delete(e.pointerId);pd=0};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();q.rad=cl(q.rad*(1+Math.sign(e.deltaY)*.1),250,2000)},{passive:false});
+  return q}catch(e){el.textContent='WebGL is not available in this browser, so the 3D volume cannot start.';el.style.padding='12px';el.style.color='#93a1b1';return false}}
+function voxDraw(p){if(VX===false)return;if(!VX){VX=voxInit();if(!VX)return}
+ const q=VX,kc=Math.min(K-1,Math.floor(S.cut/VH)),sec=S.vm==='sec',d=new THREE.Object3D();
+ for(let i=0;i<N;i++)for(let j=0;j<N;j++){const on=cellIdx(i,j)<=p.c;for(let k=0;k<K;k++){
+  if(on&&(!sec||k===kc)){d.position.set((i+.5)*CELL,-(k+.5)*VH*EY,(j+.5)*CELL);d.scale.set(1,1,1)}else d.scale.set(0,0,0);
+  d.updateMatrix();q.im.setMatrixAt((i*N+j)*K+k,d.matrix)}}
+ q.im.instanceMatrix.needsUpdate=true;q.plane.constant=-S.cut*EY;
+ if(q.sec!==sec){q.sec=sec;q.mat.clippingPlanes=sec?[]:[q.plane];q.mat.needsUpdate=true}
+ q.cap.visible=!sec&&S.cut>0;q.cap.position.y=-S.cut*EY+.3;
+ const[ci,cj]=cellOf(p.c);q.mk.position.set((ci+.5)*CELL,-VD/2,(cj+.5)*CELL);wlDraw(p)}
+function voxRender(dt){if(VX===false)return;if(!VX){VX=voxInit();if(!VX)return}
+ const el=$('vx3'),w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;const q=VX;
+ if(q.w!==w||q.h!==h){q.r.setSize(w,h,false);q.cam.aspect=w/h;q.cam.updateProjectionMatrix();q.w=w;q.h=h}
+ if(S.ar&&!P2.size)q.th+=dt*.06;const s=Math.sin(q.ph);
+ q.cam.position.set(q.tgt.x+q.rad*s*Math.sin(q.th),q.tgt.y+q.rad*Math.cos(q.ph),q.tgt.z+q.rad*s*Math.cos(q.th));q.cam.lookAt(q.tgt);q.r.render(q.sc,q.cam);compass(q.th)}
+function wlDraw(p){const f2=fit($('wl'));if(!f2)return;const[ci,cj]=cellOf(p.c),[w2,h2,y2]=f2,g=G[ci][cj],hk=(h2-20)/K,kc=Math.min(K-1,Math.floor(S.cut/VH));
+ g.forEach((c,k)=>{y2.fillStyle=CL[c].c;y2.fillRect(20,10+k*hk,w2-24,hk+.5)});
+ y2.fillStyle='#93a1b1';y2.font='10px sans-serif';[0,50,100].forEach(d=>y2.fillText(d,0,14+d/100*(h2-20)));
+ y2.strokeStyle='#fff';y2.lineWidth=2;y2.beginPath();y2.moveTo(16,10+kc*hk);y2.lineTo(w2,10+kc*hk);y2.stroke()}
+seg('vmode','vm',v=>{S.vm=v;S.key=''});
+function setView(v){S.view=v;$('stage').dataset.view=v;S.key='';[...$('views').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v))}
+const fitView=()=>{if(innerWidth<1050&&S.view==='dual')setView('s1')};fitView();addEventListener('resize',fitView);
+function voxDrawOld(p){const f=fit($('vox'));if(!f)return;const[W,H,x]=f,kc=Math.min(K-1,Math.floor(S.cut/VH));
+ const a=Math.max(4,Math.min(20,(W-16)/(2*N),(H-24)/(N+K*.4))),b=a/2,hh=a*.4,ox=W/2,oy=14;
+ const col=CL.map(c=>[shade(c.c,1.15),shade(c.c,.8),shade(c.c,.6)]);
+ const quad=(pts,fill)=>{x.fillStyle=fill;x.beginPath();x.moveTo(pts[0],pts[1]);for(let n=2;n<pts.length;n+=2)x.lineTo(pts[n],pts[n+1]);x.closePath();x.fill()};
+ const sc=(i,j)=>i>=0&&j>=0&&i<N&&j<N&&cellIdx(i,j)<=p.c;
+ for(let s=0;s<2*N-1;s++)for(let i=0;i<N;i++){const j=s-i;if(j<0||j>=N)continue;const X=ox+(i-j)*a,Y=oy+(i+j)*b;
+  if(!sc(i,j)){x.strokeStyle='#26323f';x.beginPath();x.moveTo(X,Y);x.lineTo(X+a,Y+b);x.lineTo(X,Y+2*b);x.lineTo(X-a,Y+b);x.closePath();x.stroke();continue}
+  const g=G[i][j];
+  for(let k=kc;k<K;k++){const y=Y+(k-kc)*hh;
+   if(!sc(i+1,j))quad([X+a,y+b,X,y+2*b,X,y+2*b+hh,X+a,y+b+hh],col[g[k]][2]);
+   if(!sc(i,j+1))quad([X-a,y+b,X,y+2*b,X,y+2*b+hh,X-a,y+b+hh],col[g[k]][1])}
+  quad([X,Y,X+a,Y+b,X,Y+2*b,X-a,Y+b],col[g[kc]][0])}
+ const[ci,cj]=cellOf(p.c),X=ox+(ci-cj)*a,Y=oy+(ci+cj)*b;x.strokeStyle='#fff';x.lineWidth=1.5;x.beginPath();x.moveTo(X,Y);x.lineTo(X+a,Y+b);x.lineTo(X,Y+2*b);x.lineTo(X-a,Y+b);x.closePath();x.stroke();
+ const w=$('wl'),f2=fit(w);if(f2){const[w2,h2,y2]=f2,g=G[ci][cj],hk=(h2-20)/K;
+  g.forEach((c,k)=>{y2.fillStyle=CL[c].c;y2.fillRect(20,10+k*hk,w2-24,hk+.5)});
+  y2.fillStyle='#93a1b1';y2.font='10px sans-serif';[0,50,100].forEach(d=>y2.fillText(d,0,14+d/100*(h2-20)));
+  y2.strokeStyle='#fff';y2.lineWidth=2;y2.beginPath();y2.moveTo(16,10+kc*hk);y2.lineTo(w2,10+kc*hk);y2.stroke()}}
+
+function panels(p){const[i,j]=cellOf(p.c),t=T[i][j],c=CL[t.cls],cf=Math.min(.999,t.cf+(S.mode==='live'?(R()-.5)*.006:0));
+ setT('cellid',`${String.fromCharCode(65+j)}${i+1}`);setT('mname',c.n);$('mconf').style.width=(cf*100)+'%';setT('mconft',`Classification confidence (simulated) ${(cf*100).toFixed(1)}%`);
+ $('strata').innerHTML=row('Top contact depth',t.top+' m')+row('Layer thickness',t.th+' m')+row('Density ρ',c.rho.toFixed(1)+' g/cc')+row('P-wave velocity v',c.v+' m/s')+row('Impedance Z = ρ·v',(c.rho*c.v/1000).toFixed(1)+' MRayl');
+ if(p.c!==lastCount){lastCount=p.c;counts.fill(0);for(let n=0;n<=p.c;n++){const[a,b]=cellOf(n);G[a][b].forEach(v=>counts[v]++)}
+  $('res').innerHTML='<table><tr><th>Class</th><th>Mm³</th><th>Mt</th></tr>'+CL.map((c,n)=>{const v=counts[n]*CELL*CELL*VH;return`<tr><td><i class="sw" style="background:${c.c}"></i>${c.n.split(' (')[0]}</td><td>${(v/1e6).toFixed(2)}</td><td>${(v*c.rho/1e6).toFixed(2)}</td></tr>`}).join('')+'</table><p class="mut" style="margin:6px 0 0">Scanned area '+((p.c+1)/N/N*100).toFixed(0)+'% of the block</p>'}}
+
+/* ---- Data source: standalone engine or live WebSocket, with automatic fallback ---- */
+const WSURL='ws://localhost:8000/ws/telemetry';let ws=null,wsTimer=0;
+function pressSrc(s){[...$('src').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s))}
+function fallback(why){clearTimeout(wsTimer);if(ws){ws.onopen=ws.onmessage=ws.onclose=ws.onerror=null;try{ws.close()}catch(e){}ws=null}
+ S.src='sa';S.tele=null;$('pp').disabled=false;pressSrc('sa');setT('srcst','Standalone: '+why)}
+function connect(){fallback('connecting');pressSrc('ws');setT('srcst','Connecting to '+WSURL+' ...');
+ let w;try{w=new WebSocket(WSURL)}catch(e){return fallback('WebSocket blocked here, using in-browser simulation')}
+ ws=w;wsTimer=setTimeout(()=>fallback('no server found, using in-browser simulation'),2500);
+ w.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch(x){return}
+  if(S.src!=='ws'){clearTimeout(wsTimer);S.src='ws';S.run=true;$('pp').textContent='Pause';$('pp').disabled=true;setT('srcst','Live WebSocket stream, 50 Hz')}
+  S.tele=d;S.lastMsg=performance.now()};
+ w.onclose=w.onerror=()=>{if(ws===w)fallback('connection lost, switched to in-browser simulation')}}
+
+let last=0;
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+ if(S.src==='ws'){S.t+=dt;if(S.tele)S.u=Math.max(0,Math.min(1,+S.tele.u||0));if(performance.now()-S.lastMsg>1500)fallback('stream stalled, switched to in-browser simulation')}
+ else if(S.run&&S.u<1){S.t+=dt;S.u=Math.min(1,S.u+dt*S.sp*8/(N*450))}
+ rs=S.mode==='play'?seeded(Math.floor(S.t*60)+11):Math.random;
+ const p=pos();hud(p);drawTwin(p,dt);scopeDraw(p);psdDraw(p);magDraw(p);
+ const k=[p.c,S.cut,S.view,S.vm,innerWidth].join();if(k!==S.key){S.key=k;voxDraw(p)}voxRender(dt);panels(p);
+ if(S.u>=1)$('pp').textContent='Survey complete';
+ requestAnimationFrame(frame)}
+
+function seg(id,attr,fn){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;[...$(id).children].forEach(c=>c.setAttribute('aria-pressed',c===b));fn(b.dataset[attr])})}
+seg('views','v',v=>{S.view=v;$('stage').dataset.view=v;S.key=''});
+seg('modes','m',m=>{S.mode=m;S.hist=[];if(m==='play')restart()});
+function restart(){S.u=0;S.t=0;S.hist=[];S.key='';lastCount=-1;S.run=true;$('pp').textContent='Pause';if(S.src==='ws'&&ws&&ws.readyState===1)ws.send('restart')}
+seg('src','s',s=>s==='ws'?connect():fallback('in-browser simulation'));
+$('pp').onclick=()=>{if(S.u>=1)return;S.run=!S.run;$('pp').textContent=S.run?'Pause':'Resume'};
+$('rs').onclick=restart;
+$('sp').onchange=e=>S.sp=+e.target.value;
+$('cut').oninput=e=>{S.cut=+e.target.value;setT('cutv',S.cut+' m');S.key=''};
+const out=$('out');let outText='';
+function show(t){outText=t;out.style.display='block';out.textContent=t}
+$('brep').onclick=()=>{const done=Math.floor(S.u*N*N),cv=n=>(counts[n]*CELL*CELL*VH);
+ let faultCells=0;for(let n=0;n<=Math.min(done,N*N-1);n++){const[a,b]=cellOf(n);if(T[a][b].cls==5)faultCells++}
+ show(['GEOTECHNICAL SURVEY REPORT (simulated data)','Coverage: '+(Math.min(done+1,N*N)/N/N*100).toFixed(0)+'% of 450 × 450 m block, '+(S.u*8.1).toFixed(2)+' line-km','Mode: '+(S.mode==='live'?'live simulation':'recorded playback'),'','Mineral reserves in scanned volume (0–100 m):',...CL.map((c,n)=>`  ${c.n}: ${(cv(n)/1e6).toFixed(2)} Mm³, ${(cv(n)*c.rho/1e6).toFixed(2)} Mt`),'','Hazards: fault/void plane crosses the block near x ≈ 45% (about 202 m east); '+faultCells+' scanned cells intersect it. Treat as an exclusion zone until drilled.','Reference: iron ore top contact about 12 m, coal seam 35–45 m, pegmatite host zone in the eastern third.'].join('\n'))};
+$('bdxf').onclick=()=>{const done=Math.min(Math.floor(S.u*N*N),N*N-1);let d='0\nSECTION\n2\nENTITIES\n';
+ for(let n=0;n<=done;n++){const[i,j]=cellOf(n),t=T[i][j];d+=`0\nPOINT\n8\n${CL[t.cls].d}\n10\n${i*CELL+CELL/2}\n20\n${j*CELL+CELL/2}\n30\n${-t.top}\n`}
+ show(d+'0\nENDSEC\n0\nEOF')};
+$('bcp').onclick=async()=>{if(!outText)return;try{await navigator.clipboard.writeText(outText);$('bcp').textContent='Copied'}catch(e){$('bcp').textContent='Select the text to copy'}setTimeout(()=>$('bcp').textContent='Copy output',1500)};
+/* ---- Auto-rotate toggle, compass, survey report modal ---- */
+$('ar').onclick=()=>{S.ar=!S.ar;$('ar').setAttribute('aria-pressed',S.ar);$('ar').textContent='Auto-rotate: '+(S.ar?'on':'off')};
+function compass(th){const x=$('cmp').getContext('2d');x.clearRect(0,0,64,64);x.fillStyle='rgba(15,21,28,.7)';x.beginPath();x.arc(32,32,30,0,7);x.fill();x.lineWidth=1;x.strokeStyle='#4a5a6a';x.stroke();
+ x.font='bold 11px sans-serif';x.textAlign='center';x.textBaseline='middle';
+ [['N',0,1,'#e8743b'],['E',1,0,'#cfd8e0'],['S',0,-1,'#93a1b1'],['W',-1,0,'#93a1b1']].forEach(([t,dx,dz,col])=>{const sx=dx*Math.cos(th)-dz*Math.sin(th),sy=-dx*Math.sin(th)-dz*Math.cos(th);x.strokeStyle=col;x.fillStyle=col;
+  if(t==='N'){x.lineWidth=2;x.beginPath();x.moveTo(32,32);x.lineTo(32+sx*15,32-sy*15);x.stroke()}x.fillText(t,32+sx*23,32-sy*23)})}
+const f0=v=>Math.round(v).toLocaleString('en-US');let RP=null,prevFocus=null;
+function repData(){const cnt=Math.min(N*N,pos().c+1),vol=new Array(6).fill(0),cf=new Array(6).fill(0),nc=new Array(6).fill(0);let all=0,fault=0;
+ for(let n=0;n<cnt;n++){const[i,j]=cellOf(n),t=T[i][j];G[i][j].forEach(v=>vol[v]+=CELL*CELL*VH);cf[t.cls]+=t.cf;nc[t.cls]++;all+=t.cf;if(t.cls===5)fault++}
+ return{cnt,vol,mc:cf.map((s,n)=>nc[n]?s/nc[n]*100:null),area:cnt*CELL*CELL,cfAll:all/cnt*100,fault}}
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+function dxfText(){const done=pos().c;let d='0\nSECTION\n2\nENTITIES\n';for(let n=0;n<=done;n++){const[i,j]=cellOf(n),t=T[i][j];d+=`0\nPOINT\n8\n${CL[t.cls].d}\n10\n${i*CELL+CELL/2}\n20\n${j*CELL+CELL/2}\n30\n${-t.top}\n`}return d+'0\nENDSEC\n0\nEOF'}
+function csvText(){const{rows,tv,tm,sr}=RP;return['class,volume_m3,density_g_cm3,tonnage_t,mean_confidence_pct',...rows.map(r=>`"${r.n}",${Math.round(r.v)},${r.rho},${Math.round(r.v*r.rho)},${r.cf==null?'':r.cf.toFixed(1)}`),`"Total",${Math.round(tv)},,${Math.round(tm*1e6)},`,'stripping_ratio_overburden_to_iron_ore,'+(sr==null?'':sr.toFixed(2))].join('\n')}
+function openReport(){const d=repData(),rows=CL.map((c,n)=>({n:c.n,v:d.vol[n],rho:c.rho,mt:d.vol[n]*c.rho/1e6,cf:d.mc[n]}));
+ const tv=rows.reduce((a,r)=>a+r.v,0),tm=rows.reduce((a,r)=>a+r.mt,0),sr=rows[1].v?rows[0].v/rows[1].v:null;RP={rows,tv,tm,sr};
+ $('rmeta').innerHTML=row('Reference origin (demo)','21.250000°N, 85.100000°E')+row('Scanned area',f0(d.area)+' m² of 202,500 m² ('+(d.area/2025).toFixed(0)+'%)')+row('Line-km flown',(S.u*8.1).toFixed(2)+' km')+row('Report date',new Date().toISOString().slice(0,10))+row('Processing latency','Not measured (simulated pipeline)')+row('Data source',(S.src==='ws'?'Live WebSocket stream':'Standalone engine')+', '+(S.mode==='live'?'live simulation':'recorded playback'))+row('Mean classification confidence',d.cfAll.toFixed(1)+' %')+row('Fault / void cells flagged',d.fault+' (exclusion zone until drilled)');
+ $('rtab').innerHTML='<tr><th>Class</th><th>Volume (m³)</th><th>ρ (g/cm³)</th><th>Tonnage (Mt)</th><th>Mean conf. (%)</th></tr>'+rows.map((r,n)=>`<tr${n===1?' style="font-weight:600"':''}><td><i class="sw" style="background:${CL[n].c}"></i>${r.n}</td><td>${f0(r.v)}</td><td>${r.rho.toFixed(1)}</td><td>${r.mt.toFixed(2)}</td><td>${r.cf==null?'—':r.cf.toFixed(1)}</td></tr>`).join('')+`<tr style="font-weight:600"><td>Total</td><td>${f0(tv)}</td><td></td><td>${tm.toFixed(2)}</td><td></td></tr>`;
+ $('rstrip').innerHTML=row('Stripping ratio, overburden : iron ore (by volume)',sr==null?'No ore scanned yet':sr.toFixed(2)+' : 1');
+ prevFocus=document.activeElement;$('rmod').style.display='flex';$('rclose').focus()}
+function closeReport(){$('rmod').style.display='none';if(prevFocus)prevFocus.focus()}
+$('rclose').onclick=closeReport;$('rmod').addEventListener('click',e=>{if(e.target===$('rmod'))closeReport()});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&$('rmod').style.display==='flex')closeReport()});
+$('rcsv').onclick=()=>{if(RP)dl('wartosh_demo_reserve_summary.csv',csvText(),'text/csv')};
+$('rdxf').onclick=()=>dl('wartosh_demo_points.dxf',dxfText(),'application/dxf');
+$('brep').onclick=openReport;
+requestAnimationFrame(frame);
+</script></body></html>
